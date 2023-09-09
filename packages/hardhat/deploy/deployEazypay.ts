@@ -1,4 +1,4 @@
-import { ethers, run } from "hardhat";
+import { ethers } from "hardhat";
 import { EazePay } from "../typechain-types";
 
 async function main() {
@@ -18,14 +18,14 @@ async function main() {
   await sleep(50000);
 
   // Verify the contract on polygon after deploying
-  // @ts-ignore
-  await hre.run("verify:verify", {
-    address: eazePay.address,
-    constructorArguments: [
-      "EazeToken", // desired token name
-      "EZT", // desired token symbol
-    ],
-  });
+ 
+  // await hre.run("verify:verify", {
+  //   address: eazePay.address,
+  //   constructorArguments: [
+  //     "EazeToken", // desired token name
+  //     "EZT", // desired token symbol
+  //   ],
+  // });
 
   console.log("done");
 }
