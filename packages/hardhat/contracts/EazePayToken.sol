@@ -121,8 +121,8 @@ contract EazePay is ERC20 {
         userId_Address[userId] = msg.sender;
         userId_Username[userId] = username;
         idToBalance[userId];
-        userId++;
         emit joined(msg.sender, userId);
+        userId++;
     }
 }
 
