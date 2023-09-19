@@ -3,55 +3,53 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract EazePay is ERC20 {
-    address public controller;
+   
     // Owner of the contract
     address public owner;
 
     uint256 public userId = 1000;
 
-    // ====================== MAPPINGS ===================== //git
+    struct UserDetails {
+        string username;
+        bool isActive;
+        address userAddress;
+        uint256 userId;
+        uint256 balance;
+    }
+
+    // ====================== MAPPINGS ===================== //
+
     // Mapping of currency symbols to their respective prices
     mapping(string => uint256) public currencyPrices;
-    // Mapping of user IDs to their user addresses
-    mapping(uint256 => address) public userId_Address;
-    // Mapping of user IDs to their usernames;
-    mapping(uint256 => string) public userId_Username;
-    //
-    mapping(uint256 => uint256) public idToBalance;
+   // Mapping of user IDs to their user details
+    mapping(uint256 => UserDetails) public userIdToDetails;
+    // Mapping of user addresses to their user IDs
+    mapping(address => uint256) public addressToUserId;
 
     // ====================== EVENTS ===================== //
 
-    // Event to log currency withdrwaw
-    event CurrencyWithdraw(
-        address indexed user,
-        string currencySymbol,
-        uint256 amount,
-        uint256 tokens
-    );
-
-    event rechargedToken(
+       // Event to log currency withdrawal
+    event CurrencyWithdrawal(
         address indexed user,
         string currencySymbol,
         uint256 amount
     );
-    event joined(address user, uint256 id);
+
+    event RechargedToken(
+        address indexed user,
+        string currencySymbol,
+        uint256 amount
+    );
+
+    event Joined(address indexed user, uint256 userId);
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {
-        controller = msg.sender;
         owner = msg.sender;
-    }
-
-    modifier onlyController() {
-        require(
-            msg.sender == controller,
-            "Only the controller can perform this operation"
-        );
-        _;
     }
 
     // Modifier to restrict access to the owner
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only the owner can call this function");
+        require(msg.sender == owner, "Only owner can call");
         _;
     }
 
@@ -63,9 +61,6 @@ contract EazePay is ERC20 {
         _burn(account, amount);
     }
 
-    function setController(address newController) public onlyController {
-        controller = newController;
-    }
 
     // Add or update the price of a currency
     function setCurrencyPrice(
@@ -81,6 +76,8 @@ contract EazePay is ERC20 {
         string memory currencySymbol,
         uint256 amount
     ) external {
+        require(id > 0, "Invalid User Id");
+        require(userIdToDetails[id].isActive, "User not Active"); 
         uint256 currencyPrice = currencyPrices[currencySymbol];
         require(currencyPrice > 0, "Currency not supported");
 
@@ -88,16 +85,15 @@ contract EazePay is ERC20 {
         uint256 requiredTokens = amount / currencyPrice;
 
         // Check if the user has enough tokens
-        require(idToBalance[id] >= requiredTokens, "Insufficient balance");
-        idToBalance[id] -= requiredTokens;
+        require(userIdToDetails[id].balance >= requiredTokens, "Insufficient balance");
+        userIdToDetails[id].balance -= requiredTokens;
         // burn user tokens
-        burn(userId_Address[id], requiredTokens);
+        burn(userIdToDetails[id].userAddress, requiredTokens);
 
         // emit withdraw event
-        emit CurrencyWithdraw(
-            userId_Address[id],
+        emit CurrencyWithdrawal(
+            userIdToDetails[id].userAddress,
             currencySymbol,
-            amount,
             requiredTokens
         );
     }
@@ -107,22 +103,48 @@ contract EazePay is ERC20 {
         string memory currencySymbol,
         uint256 amount
     ) external {
+        require(id > 0, "Invalid User Id");
+        require(userIdToDetails[id].isActive, "User not Active"); 
         uint256 currencyPrice = currencyPrices[currencySymbol];
         // Calculate the recharge token amount based on the currency and amount
         uint256 totalTokenPrice = amount / currencyPrice;
-        idToBalance[id] += totalTokenPrice;
-        mint(msg.sender, totalTokenPrice);
 
+        mint(msg.sender, totalTokenPrice);
+        // Update user's balance in UserDetails struct
+        userIdToDetails[id].balance += totalTokenPrice;
         // emit recharge event
-        emit rechargedToken(msg.sender, currencySymbol, amount);
+        emit RechargedToken(msg.sender, currencySymbol, amount);
+    }
+
+    function pauseUser(uint256 id) external {
+        require(id > 0, "Invalid User Id");
+        require(userIdToDetails[id].userAddress == msg.sender, "only user can pause");
+        require(userIdToDetails[id].isActive, "User already paused"); 
+        userIdToDetails[id].isActive = false;
+    }
+
+     function unPauseUser(uint256 id) external {
+        require(id > 0, "Invalid User Id");
+        require(userIdToDetails[id].userAddress == msg.sender, "only user can unPause");
+        require(!userIdToDetails[id].isActive, "User not paused"); 
+        userIdToDetails[id].isActive = true;
     }
 
     function join(string memory username) external {
-        userId_Address[userId] = msg.sender;
-        userId_Username[userId] = username;
-        idToBalance[userId];
-        emit joined(msg.sender, userId);
-        userId++;
-    }
-}
+      require(addressToUserId[msg.sender] == 0, "User already registered");
 
+        userIdToDetails[userId] = UserDetails({
+            username: username,
+            isActive: true,
+            userId: userId,
+            userAddress: msg.sender,
+            balance: 0
+        });
+
+        addressToUserId[msg.sender] = userId;
+
+        emit Joined(msg.sender, userId);
+
+        userId++;
+    } 
+}
