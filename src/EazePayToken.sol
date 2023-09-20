@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT License
 pragma solidity ^0.8.19;
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract EazePay is ERC20 {
    
